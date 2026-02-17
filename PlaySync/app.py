@@ -87,9 +87,9 @@ def profile():
 
 
 # GROUPS
-@app.route("/groups")
+@app.route("/group")
 @login_required
-def groups():
+def group():
     return render_template("group.html")
 
 

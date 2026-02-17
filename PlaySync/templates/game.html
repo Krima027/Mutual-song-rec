@@ -3,119 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PlaySync - Groups</title>
+    <title>PlaySync - Games</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/game.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/game.css') }}">
 
 </head>
 <body class="dark-mode">
     <div class="nav-trigger" onclick="toggleSidebar()"><i class="fas fa-compact-disc"></i></div>
-    
     <aside class="sidebar" id="sidebar">
         <ul class="menu-list">
             <li class="menu-item" onclick="location.href='/home'"><i class="fas fa-home"></i> Home</li>
             <li class="menu-item" onclick="location.href='/profile'"><i class="fas fa-user"></i> Profile</li>
-            <li class="menu-item active-link" onclick="location.href='/group'"><i class="fas fa-users"></i> Groups</li>
-            <li class="menu-item" onclick="location.href='/game'"><i class="fas fa-gamepad"></i> Games</li>
+            <li class="menu-item" onclick="location.href='/group'"><i class="fas fa-users"></i> Groups</li>
+            <li class="menu-item active-link" onclick="location.href='/game'"><i class="fas fa-gamepad"></i> Games</li>
         </ul>
     </aside>
-
-    <main class="main profile-mode">
+    <main class="main">
         <header>
-            <div class="search-bar"><i class="fas fa-search" style="opacity: 0.6;"></i><input type="text" placeholder="Search songs..."></div>
+            <div class="search-bar"><i class="fas fa-search"></i><input type="text" placeholder="Search games..."></div>
             <div class="header-right"><div class="icon-btn" onclick="toggleTheme()"><i class="fas fa-moon" id="theme-icon"></i></div></div>
         </header>
-
-        <div class="group-container">
-            <div class="group-sidebar">
-                <div class="gs-header">
-                    <h3>Your Jams</h3>
-                    <div class="add-grp-btn" onclick="showCreateView()"><i class="fas fa-plus"></i></div>
-                </div>
-                <div id="group-list-content">
-                    </div>
-            </div>
-
-            <div class="group-main-area" id="main-area">
-                
-                <div id="view-empty" class="placeholder-view">
-                    <i class="fas fa-car-side" style="font-size: 4rem; color: var(--text-muted); margin-bottom: 20px;"></i>
-                    <h2>Start a Jam</h2>
-                    <p style="color: var(--text-muted);">Select a group or create a new one to start listening together.</p>
-                    <button class="btn-primary" onclick="showCreateView()" style="margin-top: 20px;">Create New Group</button>
-                </div>
-
-                <div id="view-create" class="create-view" style="display: none;">
-                    <h2 class="section-title" style="margin-top: 0;">Create New Jam</h2>
-                    
-                    <div class="input-group">
-                        <label>Add Friends</label>
-                        <div class="friend-search-box">
-                            <i class="fas fa-user-plus"></i>
-                            <input type="text" id="friendSearchInput" placeholder="Search username..." onkeyup="searchFriends()">
-                        </div>
-                        <div class="search-results" id="searchResults"></div>
-                    </div>
-
-                    <div class="selected-friends" id="selectedFriends">
-                        </div>
-
-                    <div class="input-group" style="margin-top: 20px;">
-                        <label>Group Name</label>
-                        <input type="text" id="newGroupName" placeholder="e.g., Road Trip 2026" class="std-input">
-                    </div>
-
-                    <div class="action-row">
-                        <button class="btn-secondary" onclick="cancelCreate()">Cancel</button>
-                        <button class="btn-primary" onclick="finalizeGroup()">Create Jam</button>
-                    </div>
-                </div>
-
-                <div id="view-active" class="active-jam-view" style="display: none;">
-                    
-                    <div class="jam-header">
-                        <div>
-                            <h2 id="activeGroupName">Road Trip</h2>
-                            <span class="member-count" id="activeGroupMembers">3 Members • Active Now</span>
-                        </div>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="btn-secondary" onclick="location.href='game.html'"><i class="fas fa-gamepad"></i> Play Game</button>
-                            <button class="icon-btn"><i class="fas fa-user-plus"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="jam-split">
-                        <div class="jam-playlist">
-                            <div class="playlist-controls">
-                                <h4><i class="fas fa-magic" style="color: var(--accent);"></i> Auto-Generated Playlist</h4>
-                                <div>
-                                    <i class="fas fa-random ctrl-icon"></i>
-                                    <i class="fas fa-play-circle ctrl-icon" style="color: var(--accent); font-size: 1.5rem;"></i>
-                                </div>
-                            </div>
-                            <div class="jam-track-list" id="jamTrackList">
-                                </div>
-                        </div>
-
-                        <div class="jam-chat">
-                            <div class="chat-messages" id="chatWindow">
-                                </div>
-                            <div class="chat-input-bar">
-                                <input type="text" id="chatInput" placeholder="Say something...">
-                                <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+        <div id="game-menu">
+            <h2 class="section-title">Arcade</h2>
+            <div class="game-grid">
+                <div class="game-card g-guess" onclick="startGame('guessWho')"><i class="fas fa-user-secret" style="font-size:3rem; color:rgba(255,255,255,0.8);"></i><h3 style="font-size:1.5rem;">Guess Who Played This?</h3><div class="play-tag">Play Now</div></div>
+                <div class="game-card g-lyric" onclick="startGame('lyricDrop')"><i class="fas fa-microphone-alt" style="font-size:3rem; color:rgba(255,255,255,0.8);"></i><h3 style="font-size:1.5rem;">Lyric Line Drop</h3><div class="play-tag">Play Now</div></div>
             </div>
         </div>
+        <div id="game-interface">
+            <div class="game-header-bar"><h3 id="active-game-title">Game Title</h3><button class="end-btn" onclick="endGame()">End Session</button></div>
+            <div id="lobby-screen" class="lobby-container">
+                <h2>Waiting for Players...</h2>
+                <div class="player-slots"><div class="slot joined"><span class="slot-name">You</span></div><div class="slot joined" ><span class="slot-name">Hemangi</span></div><div class="slot joined" ><span class="slot-name">Rahul</span></div><div class="slot joined"><span class="slot-name">Dev</span></div></div>
+                <button class="btn-primary" onclick="advanceGameState()">Start Game</button>
+            </div>
+            <div id="guess-who-stage" style="text-align: center; max-width:600px; margin:0 auto; display:none;">
+                <div class="timer-ring" id="timer-ring">30</div><h2 id="gw-status">Hemangi is the DJ</h2><p id="gw-instruction" style="color:#aaa;">She is picking a song...</p><audio id="game-audio" src="song1.mp3"></audio>
+                <div id="voting-area" style="display:none;">
+                    <div class="vote-grid">
+                        <div class="vote-card" onclick="castVote('You')"><div class="vote-avatar"></div>You</div>
+                        <div class="vote-card" onclick="castVote('Player1')"><div class="vote-avatar" ></div>Player1</div>
+                        <div class="vote-card" onclick="castVote('Player2')"><div class="vote-avatar" ></div>Player2</div>
+                        <div class="vote-card" onclick="castVote('Player3')"><div class="vote-avatar"></div>Player3</div>
+                    </div>
+                </div>
+            </div>
+            <div id="lyric-stage" style="display:none;">
+                <div class="lyric-card">
+                    <div style="font-size:0.9rem; color:#aaa;" id="lyric-song">Song Title - Artist</div><div class="lyric-text" id="lyric-text">"I'm in love with the shape of _____"</div><div id="lyric-feedback" style="font-weight:700; margin-bottom:20px; display:none;"></div>
+                    <div class="lyric-options" id="lyric-options"></div>
+                </div>
+            </div>
+            <div id="winner-stage" style="display:none; max-width:500px; margin:0 auto; text-align:center;"><h2 style="margin-bottom:30px;">🏆 Leaderboard</h2><div id="winner-list"></div></div>
+        </div>
     </main>
-
     <script src="{{ url_for('static', filename='js/home.js') }}"></script>
     <script src="{{ url_for('static', filename='js/game.js') }}"></script>
-
 </body>
 </html>
