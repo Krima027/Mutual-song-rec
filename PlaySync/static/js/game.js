@@ -165,10 +165,10 @@ function castVote(name) {
     const instr = document.getElementById("gw-instruction");
 
     if (name === gameState.currentDJ) {
-        status.innerText = `Correct! It was ${gameState.currentDJ} 🎉`;
+        status.innerText = `Correct! It was ${gameState.currentDJ} `;
         instr.innerText = "Nice guess!";
     } else {
-        status.innerText = `Wrong! It was ${gameState.currentDJ} 😜`;
+        status.innerText = `Wrong! It was ${gameState.currentDJ} `;
         instr.innerText = "Better luck next time.";
     }
 

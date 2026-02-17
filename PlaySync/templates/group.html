@@ -6,8 +6,9 @@
     <title>PlaySync - Groups</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/group.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/group.css') }}">
+
 </head>
 <body class="dark-mode">
     <div class="nav-trigger" onclick="toggleSidebar()"><i class="fas fa-compact-disc"></i></div>
@@ -113,7 +114,8 @@
         </div>
     </main>
 
-    <script src="js/home.js"></script>
-    <script src="js/group.js"></script>
+    <script src="{{ url_for('static', filename='js/home.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/group.js') }}"></script>
+
 </body>
 </html>

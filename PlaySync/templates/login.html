@@ -1,33 +1,43 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlaySync Login</title>
-    <link rel="stylesheet" href="css/auth.css">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
     </style>
 </head>
+
 <body>
     <div class="stage">
         <div class="album-cover">
-            <div class="vinyl-graphic"><div class="vinyl-label"></div></div>
+            <div class="vinyl-graphic">
+                <div class="vinyl-label"></div>
+            </div>
             <div class="album-title">PLAYSYNC</div>
         </div>
+
         <div class="login-box">
             <h2>Welcome</h2>
-            <input type="email" placeholder="Email">
-            <input type="password" placeholder="Password">
+
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+
+            <button class="btn btn-primary" id="loginBtn">Sign In</button>
+
             <div class="divider">OR</div>
+
             <div class="social-options">
-                <button class="btn btn-google" onclick="redirect()">Google</button>
+                <button class="btn btn-google">Google</button>
                 <button class="btn btn-spotify">Spotify</button>
             </div>
         </div>
     </div>
-    <script src="js/auth.js"></script>
+
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
 </body>
 </html>
-
