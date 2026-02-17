@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/group.css') }}">
 
 </head>
 <body class="dark-mode">
@@ -15,10 +14,10 @@
     
     <aside class="sidebar" id="sidebar">
         <ul class="menu-list">
-            <li class="menu-item" onclick="location.href='home.html'"><i class="fas fa-home"></i> Home</li>
-            <li class="menu-item" onclick="location.href='profile.html'"><i class="fas fa-user"></i> Profile</li>
-            <li class="menu-item active-link" onclick="location.href='group.html'"><i class="fas fa-users"></i> Groups</li>
-            <li class="menu-item" onclick="location.href='game.html'"><i class="fas fa-gamepad"></i> Games</li>
+            <li class="menu-item" onclick="location.href='/home'"><i class="fas fa-home"></i> Home</li>
+            <li class="menu-item" onclick="location.href='/profile'"><i class="fas fa-user"></i> Profile</li>
+            <li class="menu-item active-link" onclick="location.href='/group'"><i class="fas fa-users"></i> Groups</li>
+            <li class="menu-item" onclick="location.href='/game'"><i class="fas fa-gamepad"></i> Games</li>
         </ul>
     </aside>
 
