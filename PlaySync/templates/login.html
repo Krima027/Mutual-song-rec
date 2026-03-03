@@ -27,13 +27,27 @@
             <input type="email" id="email" placeholder="Email">
             <input type="password" id="password" placeholder="Password">
 
-            <button class="btn btn-primary" id="loginBtn">Sign In</button>
+            <!-- Manual Login (optional for later) -->
+            <button class="btn btn-primary" id="loginBtn">
+                Sign In
+            </button>
 
             <div class="divider">OR</div>
 
             <div class="social-options">
-                <button class="btn btn-google">Google</button>
-                <button class="btn btn-spotify">Spotify</button>
+                <!-- GOOGLE LOGIN -->
+                <button 
+                    class="btn btn-google"
+                    onclick="window.location.href='/login/google'">
+                    Google
+                </button>
+
+                <!-- SPOTIFY LOGIN -->
+                <button 
+                    class="btn btn-spotify"
+                    onclick="window.location.href='/login/spotify'">
+                    Spotify
+                </button>
             </div>
         </div>
     </div>

@@ -1,162 +1,210 @@
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from models import db, User, Group, Playlist, Message
-from ml import generate_mutual_songs
-from datetime import timedelta
+from flask import render_template, redirect, request, url_for, jsonify
+from flask_login import login_user, login_required, current_user
+from authlib.integrations.flask_client import OAuth
+from models import db, User, Friend, Group, GroupMember
 
-api = Blueprint("api", __name__)
 
-# ================= AUTH =================
+def init_routes(app):
+    oauth = OAuth(app)
 
-@api.route("/auth/login", methods=["POST"])
-def login():
-    data = request.json
-    email = data.get("email")
-    name = data.get("name")
-    profile_pic = data.get("profile_pic")
+    spotify = oauth.register(
+        name="spotify",
+        client_id=app.config["SPOTIFY_CLIENT_ID"],
+        client_secret=app.config["SPOTIFY_CLIENT_SECRET"],
+        access_token_url="https://accounts.spotify.com/api/token",
+        authorize_url="https://accounts.spotify.com/authorize",
+        api_base_url="https://api.spotify.com/v1/",
+        client_kwargs={
+            "scope": (
+                "user-read-private "
+                "user-read-email "
+                "playlist-read-private "
+                "playlist-read-collaborative "
+                "user-read-playback-state "
+                "user-modify-playback-state "
+                "user-read-currently-playing "
+                "user-top-read "
+                "user-read-recently-played "
+                "streaming"
+            )
+        },
+    )
 
-    if not email:
-        return jsonify({"error": "Email required"}), 400
+    google = oauth.register(
+        name="google",
+        client_id=app.config["GOOGLE_CLIENT_ID"],
+        client_secret=app.config["GOOGLE_CLIENT_SECRET"],
+        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+        client_kwargs={"scope": "openid email profile"},
+    )
 
-    user = User.query.filter_by(email=email).first()
+    # ---------------- LOGIN PAGE ---------------- #
 
-    if not user:
-        user = User(email=email, name=name, profile_pic=profile_pic)
-        db.session.add(user)
+    @app.route("/")
+    def login_page():
+        return render_template("login.html")
+
+    @app.route("/login/spotify")
+    def login_spotify():
+        return spotify.authorize_redirect(redirect_uri=app.config["SPOTIFY_REDIRECT_URI"])
+
+    @app.route("/callback/spotify")
+    def callback_spotify():
+        token = spotify.authorize_access_token()
+        resp = spotify.get(
+            "me",
+            token={"access_token": token["access_token"], "token_type": "Bearer"}
+        )
+        if resp.status_code != 200:
+            return f"Spotify API error: {resp.status_code} - {resp.text}", 400
+        profile = resp.json()
+        email = profile.get("email")
+        if not email:
+            return "Spotify account has no email.", 400
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(
+                username=profile["display_name"],
+                email=email,
+                auth_provider="spotify",
+                provider_id=profile["id"],
+            )
+            db.session.add(user)
+        user.spotify_token = token["access_token"]
+        user.spotify_refresh_token = token.get("refresh_token")
         db.session.commit()
+        login_user(user)
+        return redirect("/home")
 
-    access_token = create_access_token(identity=user.id, expires_delta=timedelta(days=30))
+    # ---------------- GOOGLE LOGIN ---------------- #
 
-    return jsonify({"token": access_token})
+    @app.route("/login/google")
+    def login_google():
+        return google.authorize_redirect(url_for("callback_google", _external=True))
 
+    @app.route("/callback/google")
+    def callback_google():
+        token = google.authorize_access_token()
+        userinfo = token.get("userinfo") or {}
+        if not userinfo:
+            return "Failed to fetch user info from Google", 400
+        email = userinfo.get("email")
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(
+                username=userinfo.get("name"),
+                email=email,
+                auth_provider="google",
+                provider_id=userinfo.get("sub"),
+            )
+            db.session.add(user)
+        db.session.commit()
+        login_user(user)
+        return redirect("/home")
 
-@api.route("/home", methods=["GET"])
-@jwt_required()
-def home():
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
+    # ---------------- HOME ---------------- #
 
-    playlists = [
-        {"id": p.id, "name": p.name}
-        for p in user.playlists
-    ]
+    @app.route("/home")
+    @login_required
+    def home():
+        return render_template("home.html", user=current_user)
 
-    return jsonify({
-        "name": user.name,
-        "email": user.email,
-        "playlists": playlists
-    })
+    # ---------------- GROUP PAGE ---------------- #
 
+    @app.route("/group")
+    @login_required
+    def group():
+        return render_template("group.html")
 
-# ================= PROFILE =================
+    @app.route("/group/<int:group_id>")
+    @login_required
+    def group_page(group_id):
+        group = Group.query.get(group_id)
+        if not group:
+            return jsonify({"error": "Group not found"}), 404
+        if not GroupMember.query.filter_by(group_id=group_id, user_id=current_user.id).first():
+            return jsonify({"error": "You are not a member of this group"}), 403
+        return render_template("group.html", group_id=group_id)
 
-@api.route("/profile", methods=["GET"])
-@jwt_required()
-def profile():
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
+    # ---------------- GAME PAGE ---------------- #
 
-    return jsonify({
-        "name": user.name,
-        "email": user.email,
-        "groups_count": len(user.groups),
-        "playlists_count": len(user.playlists)
-    })
+    @app.route("/game")
+    @login_required
+    def game():
+        return render_template("game.html")
 
+    # ---------------- SPOTIFY TOKEN ---------------- #
 
-# ================= GROUP =================
+    @app.route("/api/spotify-token")
+    @login_required
+    def get_spotify_token():
+        return jsonify({"token": current_user.spotify_token})
 
-@api.route("/groups", methods=["POST"])
-@jwt_required()
-def create_group():
-    user_id = get_jwt_identity()
-    data = request.json
-    name = data.get("name")
-    member_ids = data.get("members", [])
+    # ---------------- PROFILE ---------------- #
 
-    group = Group(name=name)
-    db.session.add(group)
-    db.session.commit()
+    @app.route("/profile")
+    @login_required
+    def profile():
+        return render_template("profile.html", user=current_user)
 
-    group.members.append(User.query.get(user_id))
+    # ---------------- SEARCH USER ---------------- #
 
-    for m in member_ids:
-        member = User.query.get(m)
-        if member:
-            group.members.append(member)
+    @app.route("/search-user")
+    @login_required
+    def search_user():
+        username = request.args.get("username")
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify({"id": user.id, "username": user.username})
 
-    db.session.commit()
+    # ---------------- ADD FRIEND ---------------- #
 
-    return jsonify({"message": "Group created"})
+    @app.route("/add-friend", methods=["POST"])
+    @login_required
+    def add_friend():
+        friend_id = request.json.get("friend_id")
+        if friend_id == current_user.id:
+            return jsonify({"error": "Cannot add yourself"}), 400
+        friend = User.query.get(friend_id)
+        if not friend:
+            return jsonify({"error": "User not found"}), 404
+        if Friend.query.filter_by(user_id=current_user.id, friend_id=friend_id).first():
+            return jsonify({"error": "Already friends"}), 400
+        db.session.add(Friend(user_id=current_user.id, friend_id=friend_id))
+        db.session.add(Friend(user_id=friend_id, friend_id=current_user.id))
+        db.session.commit()
+        return jsonify({"message": "Friend added"})
 
+    # ---------------- CREATE GROUP ---------------- #
 
-@api.route("/groups", methods=["GET"])
-@jwt_required()
-def get_groups():
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
+    @app.route("/create-group", methods=["POST"])
+    @login_required
+    def create_group():
+        name = request.json.get("name")
+        group = Group(name=name, created_by=current_user.id)
+        db.session.add(group)
+        db.session.commit()
+        db.session.add(GroupMember(group_id=group.id, user_id=current_user.id))
+        db.session.commit()
+        return jsonify({"group_id": group.id})
 
-    groups = [
-        {"id": g.id, "name": g.name}
-        for g in user.groups
-    ]
+    # ---------------- ADD MEMBER ---------------- #
 
-    return jsonify(groups)
-
-
-@api.route("/groups/<int:group_id>/generate-playlist", methods=["POST"])
-@jwt_required()
-def generate_playlist(group_id):
-    group = Group.query.get(group_id)
-    if not group:
-        return jsonify({"error": "Group not found"}), 404
-
-    user_ids = [member.id for member in group.members]
-    songs = generate_mutual_songs(user_ids)
-
-    playlist = Playlist(
-        name=f"Mutual Playlist - {group.name}",
-        songs=str(songs),
-        user_id=user_ids[0]
-    )
-
-    db.session.add(playlist)
-    db.session.commit()
-
-    return jsonify({"songs": songs})
-
-
-# ================= CHAT =================
-
-@api.route("/groups/<int:group_id>/chat", methods=["POST"])
-@jwt_required()
-def send_message(group_id):
-    user_id = get_jwt_identity()
-    data = request.json
-    content = data.get("content")
-
-    message = Message(
-        content=content,
-        user_id=user_id,
-        group_id=group_id
-    )
-
-    db.session.add(message)
-    db.session.commit()
-
-    return jsonify({"message": "Sent"})
-
-
-@api.route("/groups/<int:group_id>/chat", methods=["GET"])
-@jwt_required()
-def get_messages(group_id):
-    messages = Message.query.filter_by(group_id=group_id).all()
-
-    return jsonify([
-        {
-            "user_id": m.user_id,
-            "content": m.content,
-            "timestamp": m.timestamp
-        }
-        for m in messages
-    ])
+    @app.route("/add-member", methods=["POST"])
+    @login_required
+    def add_member():
+        group_id = request.json.get("group_id")
+        user_id = request.json.get("user_id")
+        group = Group.query.get(group_id)
+        if not group:
+            return jsonify({"error": "Group not found"}), 404
+        if not GroupMember.query.filter_by(group_id=group_id, user_id=current_user.id).first():
+            return jsonify({"error": "You are not a member of this group"}), 403
+        if not User.query.get(user_id):
+            return jsonify({"error": "User not found"}), 404
+        if GroupMember.query.filter_by(group_id=group_id, user_id=user_id).first():
+            return jsonify({"error": "User is already a member"}), 400
+        db.session.add(GroupMember(group_id=group_id, user_id=user_id))
+        db.session.commit()
+        return jsonify({"message": "Member added"})
