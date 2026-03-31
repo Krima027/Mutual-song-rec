@@ -1,7 +1,8 @@
-flask
-flask_sqlalchemy
-flask_jwt_extended
-flask_cors
-requests
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Flask-Cors
 python-dotenv
-flask_login
+authlib
+requests
+yt-dlp

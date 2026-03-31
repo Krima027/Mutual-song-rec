@@ -1,197 +1,311 @@
-// --- STATE MANAGEMENT ---
-let myGroups = [
-    { id: 1, name: "Chill Drives", members: ["You", "Rahul"], active: false },
-    { id: 2, name: "Late Night Study", members: ["You", "Hemangi", "Dev"], active: false }
-];
+// group.js — PlaySync Groups, fully wired to backend
+// Design / HTML structure unchanged. All mock data replaced with real API calls.
 
-let selectedFriends = [];
-const allUsers = ["Hemangi", "Rahul", "Dev", "Priya", "Amit", "Sara"]; // Mock Database
+// ── STATE ────────────────────────────────────────────────────
+var selectedUsers  = [];   // [{id, username}]  people added to new group
+var activeGroupId  = null; // currently open group
 
-// --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
-    renderGroupList();
+// ── INIT ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    loadMyGroups();
 });
 
-// --- RENDER GROUP SIDEBAR ---
-function renderGroupList() {
-    const container = document.getElementById('group-list-content');
-    container.innerHTML = '';
+// ── LOAD MY GROUPS FROM BACKEND ───────────────────────────────
+async function loadMyGroups() {
+    var container = document.getElementById('group-list-content');
+    if (!container) return;
+    try {
+        var res    = await fetch('/api/my-groups');
+        var groups = await res.json();
+        container.innerHTML = '';
 
-    myGroups.forEach(grp => {
-        const item = document.createElement('div');
-        item.className = `group-card-item ${grp.active ? 'active' : ''}`;
-        item.onclick = () => openGroup(grp.id);
-        
-        // Random gradient for avatar
-        const hue = Math.floor(Math.random() * 360);
-        item.innerHTML = `
-            <div class="g-avatar" style="background: linear-gradient(45deg, hsl(${hue}, 60%, 50%), hsl(${hue + 40}, 60%, 50%));">
-                <i class="fas fa-music"></i>
-            </div>
-            <div>
-                <div style="font-weight:700; font-size:0.9rem;">${grp.name}</div>
-                <div style="font-size:0.7rem; color:#aaa;">${grp.members.length} Members</div>
-            </div>
-        `;
-        container.appendChild(item);
-    });
+        if (!groups.length) {
+            container.innerHTML = '<div style="color:#aaa;font-size:0.8rem;padding:16px;">No groups yet. Create one!</div>';
+            return;
+        }
+
+        groups.forEach(function(grp) {
+            var item = document.createElement('div');
+            item.className = 'group-card-item';
+            var hue = (grp.id * 57) % 360;   // deterministic color per group
+            item.innerHTML =
+                '<div class="g-avatar" style="background: linear-gradient(45deg, hsl(' + hue + ',60%,50%), hsl(' + ((hue+40)%360) + ',60%,50%));">' +
+                    '<i class="fas fa-music"></i>' +
+                '</div>' +
+                '<div>' +
+                    '<div style="font-weight:700;font-size:0.9rem;">' + escHtml(grp.name) + '</div>' +
+                    '<div style="font-size:0.7rem;color:#aaa;">' + grp.member_count + ' Members</div>' +
+                '</div>';
+            item.onclick = function() { openGroup(grp.id, grp.name); };
+            container.appendChild(item);
+        });
+    } catch(e) {
+        container.innerHTML = '<div style="color:#aaa;font-size:0.8rem;padding:16px;">Could not load groups.</div>';
+    }
 }
 
-// --- NAVIGATION LOGIC ---
+// ── NAVIGATION ────────────────────────────────────────────────
 function showCreateView() {
-    document.getElementById('view-empty').style.display = 'none';
+    document.getElementById('view-empty').style.display  = 'none';
     document.getElementById('view-active').style.display = 'none';
     document.getElementById('view-create').style.display = 'block';
-    
-    // Reset inputs
     document.getElementById('newGroupName').value = '';
+    document.getElementById('friendSearchInput').value = '';
+    document.getElementById('searchResults').innerHTML = '';
     document.getElementById('selectedFriends').innerHTML = '';
-    selectedFriends = [];
+    selectedUsers = [];
 }
 
 function cancelCreate() {
     document.getElementById('view-create').style.display = 'none';
-    document.getElementById('view-empty').style.display = 'flex';
+    document.getElementById('view-empty').style.display  = 'flex';
 }
 
-function openGroup(id) {
-    const group = myGroups.find(g => g.id === id);
-    if (!group) return;
+// ── OPEN A GROUP ──────────────────────────────────────────────
+async function openGroup(groupId, groupName) {
+    activeGroupId = groupId;
 
-    // UI Updates
-    document.getElementById('view-empty').style.display = 'none';
+    document.getElementById('view-empty').style.display  = 'none';
     document.getElementById('view-create').style.display = 'none';
     document.getElementById('view-active').style.display = 'flex';
 
-    // Set Header Info
-    document.getElementById('activeGroupName').innerText = group.name;
-    document.getElementById('activeGroupMembers').innerText = `${group.members.join(", ")} • Active Jam`;
+    document.getElementById('activeGroupName').innerText = groupName || 'Group';
 
-    // 1. GENERATE PLAYLIST (Mock ML Model)
-    generatePlaylist(group.name);
-
-    // 2. LOAD CHAT
-    loadChat(group.id);
-}
-
-// --- CREATE GROUP LOGIC ---
-function searchFriends() {
-    const input = document.getElementById('friendSearchInput').value.toLowerCase();
-    const resultsBox = document.getElementById('searchResults');
-    resultsBox.innerHTML = '';
-
-    if (input.length > 0) {
-        resultsBox.style.display = 'block';
-        const matches = allUsers.filter(u => u.toLowerCase().includes(input) && !selectedFriends.includes(u));
-        
-        matches.forEach(user => {
-            const div = document.createElement('div');
-            div.className = 'search-res-item';
-            div.innerHTML = `<span>${user}</span> <i class="fas fa-plus"></i>`;
-            div.onclick = () => addFriendToSelection(user);
-            resultsBox.appendChild(div);
-        });
-        if(matches.length === 0) resultsBox.style.display = 'none';
-    } else {
-        resultsBox.style.display = 'none';
+    // Load members
+    try {
+        var res     = await fetch('/api/group/' + groupId + '/members');
+        var members = await res.json();
+        var names   = members.map(function(m) { return '@' + m.username; }).join(', ');
+        document.getElementById('activeGroupMembers').innerText = names + ' • Active Jam';
+    } catch(e) {
+        document.getElementById('activeGroupMembers').innerText = 'Members • Active Jam';
     }
+
+    // Load mutual playlist (ML) and show — but DON'T auto-play
+    loadMutualPlaylist(groupId);
+
+    // Reset chat
+    loadChat(groupId);
 }
 
-function addFriendToSelection(name) {
-    selectedFriends.push(name);
+// ── CREATE GROUP ──────────────────────────────────────────────
+window.finalizeGroup = async function() {
+    var name = document.getElementById('newGroupName').value.trim();
+    if (!name) { alert('Please name your group!'); return; }
+    if (!selectedUsers.length) { alert('Add at least one person!'); return; }
+
+    var btn = document.querySelector('#view-create .btn-primary[onclick="finalizeGroup()"]');
+    if (btn) { btn.disabled = true; btn.innerText = 'Creating...'; }
+
+    try {
+        var res  = await fetch('/create-group', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: name,
+                member_ids: selectedUsers.map(function(u) { return u.id; })
+            })
+        });
+        var data = await res.json();
+        if (data.error) {
+            alert(data.error);
+            if (btn) { btn.disabled = false; btn.innerText = 'Create Jam'; }
+            return;
+        }
+        await loadMyGroups();
+        openGroup(data.group_id, data.name);
+    } catch(e) {
+        alert('Could not create group. Try again.');
+        if (btn) { btn.disabled = false; btn.innerText = 'Create Jam'; }
+    }
+};
+
+// ── SEARCH USERS (real API) ───────────────────────────────────
+var searchTimer = null;
+
+window.searchFriends = function() {
+    var input = document.getElementById('friendSearchInput').value.trim();
+    var resultsBox = document.getElementById('searchResults');
+    clearTimeout(searchTimer);
+    resultsBox.innerHTML = '';
+    resultsBox.style.display = 'none';
+    if (!input) return;
+
+    searchTimer = setTimeout(async function() {
+        try {
+            var res  = await fetch('/search-user?username=' + encodeURIComponent(input));
+            var data = await res.json();
+            resultsBox.innerHTML = '';
+
+            if (data.error) {
+                resultsBox.style.display = 'block';
+                resultsBox.innerHTML = '<div class="search-res-item" style="color:#aaa;">' + escHtml(data.error) + '</div>';
+                return;
+            }
+
+            // Check not already added
+            var alreadyAdded = selectedUsers.some(function(u) { return u.id === data.id; });
+            resultsBox.style.display = 'block';
+            var div = document.createElement('div');
+            div.className = 'search-res-item';
+            div.innerHTML = '<span>@' + escHtml(data.username) + '</span>' +
+                (alreadyAdded ? '<span style="color:#aaa;font-size:0.75rem;">Added</span>' : '<i class="fas fa-plus"></i>');
+            if (!alreadyAdded) {
+                div.onclick = function() { addUserToSelection(data); };
+            }
+            resultsBox.appendChild(div);
+        } catch(e) {
+            resultsBox.innerHTML = '';
+        }
+    }, 400);
+};
+
+function addUserToSelection(user) {
+    if (selectedUsers.some(function(u) { return u.id === user.id; })) return;
+    selectedUsers.push(user);
     document.getElementById('friendSearchInput').value = '';
+    document.getElementById('searchResults').innerHTML = '';
     document.getElementById('searchResults').style.display = 'none';
     renderSelectedFriends();
 }
 
 function renderSelectedFriends() {
-    const container = document.getElementById('selectedFriends');
-    container.innerHTML = selectedFriends.map(f => `
-        <div class="friend-chip">${f} <i class="fas fa-times" style="cursor:pointer;" onclick="removeFriend('${f}')"></i></div>
-    `).join('');
+    var container = document.getElementById('selectedFriends');
+    container.innerHTML = selectedUsers.map(function(u) {
+        return '<div class="friend-chip">@' + escHtml(u.username) +
+            ' <i class="fas fa-times" style="cursor:pointer;" onclick="removeUser(' + u.id + ')"></i></div>';
+    }).join('');
 }
 
-function removeFriend(name) {
-    selectedFriends = selectedFriends.filter(f => f !== name);
+window.removeFriend = function(name) {};   // legacy stub
+window.removeUser = function(id) {
+    selectedUsers = selectedUsers.filter(function(u) { return u.id !== id; });
     renderSelectedFriends();
+};
+
+// ── MUTUAL PLAYLIST (ML) ─────────────────────────────────────
+
+async function loadMutualPlaylist(groupId) {
+    var trackList = document.getElementById('jamTrackList');
+    if (!trackList) return;
+    trackList.innerHTML = '<div style="color:#aaa;font-size:0.85rem;padding:20px;text-align:center;"><i class="fas fa-magic" style="margin-right:8px;"></i>Analysing everyone\'s music taste...</div>';
+
+    try {
+        var res   = await fetch('/api/group/' + groupId + '/mutual-songs');
+        var songs = await res.json();
+
+        if (songs.error || !songs.length) {
+            trackList.innerHTML = '<div style="color:#aaa;font-size:0.85rem;padding:20px;text-align:center;">No mutual songs found yet. Members need to log in so their history can be compared!</div>';
+            return;
+        }
+
+        // Store as queue but DON'T auto-play — user must press Play
+        window._groupQueue      = songs;
+        window._groupQueueIndex = -1;   // -1 = nothing playing yet
+
+        trackList.innerHTML = '';
+        songs.forEach(function(song, i) {
+            var div = document.createElement('div');
+            div.className = 'jam-track';
+            div.id = 'jt-' + i;
+
+            var sharedLabel = song.shared_by + '/' + song.total_members + ' members';
+            var imgHtml = song.image
+                ? '<img src="' + song.image + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;">'
+                : '<div style="width:36px;height:36px;border-radius:6px;background:#333;flex-shrink:0;"></div>';
+
+            div.innerHTML =
+                imgHtml +
+                '<div class="jt-info" style="flex:1;overflow:hidden;">' +
+                    '<h5 style="margin:0;font-size:0.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(song.title) + '</h5>' +
+                    '<span style="font-size:0.72rem;color:#aaa;">' + escHtml(song.artist) + ' · <span style="color:var(--accent);">' + sharedLabel + '</span></span>' +
+                '</div>' +
+                '<i class="fas fa-play" style="font-size:0.8rem;color:#aaa;flex-shrink:0;" id="jt-icon-' + i + '"></i>';
+
+            div.onclick = function() { playGroupSong(i); };
+            trackList.appendChild(div);
+        });
+
+        // Wire the big play button in the playlist header
+        var bigPlay = document.querySelector('.playlist-controls .fa-play-circle');
+        if (bigPlay) {
+            bigPlay.parentElement.onclick = function() { playGroupSong(0); };
+            bigPlay.parentElement.style.cursor = 'pointer';
+        }
+
+    } catch(e) {
+        trackList.innerHTML = '<div style="color:#aaa;font-size:0.85rem;padding:20px;">Could not generate playlist.</div>';
+    }
 }
 
-function finalizeGroup() {
-    const name = document.getElementById('newGroupName').value;
-    if (!name) return alert("Please name your group!");
-    if (selectedFriends.length === 0) return alert("Add at least one friend!");
+// Play a song from the group mutual list
+function playGroupSong(index) {
+    var songs = window._groupQueue;
+    if (!songs || index >= songs.length) return;
 
-    const newGroup = {
-        id: Date.now(),
-        name: name,
-        members: ["You", ...selectedFriends],
-        active: true
-    };
+    var song = songs[index];
 
-    myGroups.push(newGroup);
-    renderGroupList();
-    openGroup(newGroup.id); // Go directly to new group
-}
+    // Highlight active track
+    if (window._groupQueueIndex >= 0) {
+        var old = document.getElementById('jt-icon-' + window._groupQueueIndex);
+        if (old) { old.classList.remove('fa-pause'); old.classList.add('fa-play'); old.style.color = '#aaa'; }
+    }
+    window._groupQueueIndex = index;
+    var icon = document.getElementById('jt-icon-' + index);
+    if (icon) { icon.classList.remove('fa-play'); icon.classList.add('fa-pause'); icon.style.color = 'var(--accent)'; }
 
-// --- JAM FUNCTIONS ---
-function generatePlaylist(seed) {
-    const trackList = document.getElementById('jamTrackList');
-    trackList.innerHTML = ''; // Clear old
+    // Use the global player from home.js
+    if (window.playSong) {
+        window.playSong({
+            song_id: song.song_id,
+            title:   song.title,
+            artist:  song.artist,
+            image:   song.image,
+        });
+        // After this song ends, auto-advance
+        var audioEl = document.getElementById('audio');
+        if (audioEl) {
+            audioEl.onended = function() {
+                var next = index + 1;
+                if (next < songs.length) playGroupSong(next);
+            };
+        }
+    }
 
-    // Mock Songs
-    const songs = [
-        { t: "Blinding Lights", a: "The Weeknd" },
-        { t: "Levitating", a: "Dua Lipa" },
-        { t: "Starboy", a: "The Weeknd" },
-        { t: "As It Was", a: "Harry Styles" },
-        { t: "Flowers", a: "Miley Cyrus" }
-    ];
-
-    // "ML" Shuffle
-    songs.sort(() => Math.random() - 0.5);
-
-    songs.forEach((s, i) => {
-        const div = document.createElement('div');
-        div.className = 'jam-track';
-        div.innerHTML = `
-            <div class="jt-info"><h5>${s.t}</h5><span>${s.a}</span></div>
-            <i class="fas fa-play" style="font-size:0.8rem; color:#aaa;"></i>
-        `;
-        div.onclick = () => window.playSong(s.t, s.a); // Calls global player
-        trackList.appendChild(div);
+    // Set global queue so prev/next arrows work
+    window._queue = songs.map(function(s) {
+        return { song_id: s.song_id, title: s.title, artist: s.artist, image: s.image };
     });
+    window._queueIndex = index;
 }
 
-// --- CHAT LOGIC ---
+// ── CHAT ──────────────────────────────────────────────────────
 function loadChat(groupId) {
-    const chat = document.getElementById('chatWindow');
-    chat.innerHTML = `
-        <div class="c-msg inc"><span class="sender-name">System</span>Jam started! Playlist generated based on everyone's taste.</div>
-    `;
+    var chat = document.getElementById('chatWindow');
+    if (!chat) return;
+    chat.innerHTML =
+        '<div class="c-msg inc"><span class="sender-name">System</span>Jam started! Mutual playlist generated based on everyone\'s taste.</div>';
 }
 
-function sendMessage() {
-    const input = document.getElementById('chatInput');
-    const txt = input.value;
+window.sendMessage = function() {
+    var input = document.getElementById('chatInput');
+    var txt   = input ? input.value.trim() : '';
     if (!txt) return;
+    var chat  = document.getElementById('chatWindow');
 
-    const chat = document.getElementById('chatWindow');
-    
-    // Add My Message
-    const myMsg = document.createElement('div');
+    var myMsg = document.createElement('div');
     myMsg.className = 'c-msg out';
     myMsg.innerText = txt;
     chat.appendChild(myMsg);
-
     input.value = '';
     chat.scrollTop = chat.scrollHeight;
+};
 
-    // Simulate Reply
-    setTimeout(() => {
-        const reply = document.createElement('div');
-        reply.className = 'c-msg inc';
-        reply.innerHTML = `<span class="sender-name">Hemangi</span>${["Nice song!", "Skip this one?", "Love this vibe!"][Math.floor(Math.random()*3)]}`;
-        chat.appendChild(reply);
-        chat.scrollTop = chat.scrollHeight;
-    }, 1500);
+// ── HELPERS ───────────────────────────────────────────────────
+function escHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }

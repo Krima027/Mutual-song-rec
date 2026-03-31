@@ -7,10 +7,20 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        #yt-player-container {
+            position: fixed; bottom: -9999px; left: -9999px;
+            width: 1px; height: 1px; opacity: 0; pointer-events: none;
+        }
+    </style>
 </head>
-<body class="dark-mode"> 
-    <input type="hidden" id="user-id">
-    <audio id="audio"></audio>
+<body class="dark-mode">
+    <input type="hidden" id="user-id" value="{{ user.id }}">
+
+    <!-- YouTube hidden player -->
+    <div id="yt-player-container">
+        <div id="yt-player"></div>
+    </div>
 
     <div class="nav-trigger" onclick="toggleSidebar()">
         <i class="fas fa-compact-disc"></i>
@@ -28,17 +38,15 @@
     <main class="main">
         <header>
             <div class="search-bar">
-                <i class="fas fa-search" style="opacity: 0.6;"></i>
-                <input type="text" id="global-search" placeholder="Search artists, songs...">
+                <i class="fas fa-search" style="opacity:0.6;"></i>
+                <input type="text" id="global-search" placeholder="Search artists, songs..." onkeyup="handleSearch(event)">
             </div>
             <div class="header-right">
                 <div class="theme-btn" onclick="toggleTheme()">
                     <i class="fas fa-moon" id="theme-icon"></i>
                 </div>
                 <a href="/profile">
-                    <div class="profile-icon">
-                        <i class="fas fa-user"></i>
-                    </div>
+                    <div class="profile-icon"><i class="fas fa-user"></i></div>
                 </a>
             </div>
         </header>
@@ -65,74 +73,68 @@
 
         <div class="mid-grid">
             <div class="panel">
-                <div style="margin-bottom: 20px; font-weight: 700; font-size: 1.1rem;">Favorite Artists</div>
+                <div style="margin-bottom:20px;font-weight:700;font-size:1.1rem;">Favorite Artists</div>
                 <div class="artist-row" id="favorite-artists">
                     <div class="loader">Loading artists...</div>
                 </div>
             </div>
-
             <div class="panel">
-                <div style="margin-bottom: 20px; font-weight: 700; font-size: 1.1rem;">Weekly Activity</div>
-                <div class="chart-area" id="weekly-activity">
-                    <div class="loader">Loading stats...</div>
+                <div style="margin-bottom:20px;font-weight:700;font-size:1.1rem;">Your Playlists</div>
+                <div id="playlistContainer" style="display:flex;flex-wrap:wrap;gap:12px;">
+                    <div class="loader">Loading playlists...</div>
                 </div>
             </div>
         </div>
 
-        <h2 class="section-title">Suggested For You</h2>
-            <div class="song-list" id="suggested-songs">
-                <div class="loader">Finding your vibe...</div>
-            </div>
-                <div style="font-size: 0.8rem; opacity: 0.7;">...</div>
-                <div class="play-mini"><i class="fas fa-play"></i></div>
-            </div>
-            <div class="song-list" id="suggested-songs">
-                <div class="loader">Finding your vibe...</div>
-            </div>
-                <div style="font-size: 0.8rem; opacity: 0.7;">...</div>
-                <div class="play-mini"><i class="fas fa-play"></i></div>
-            </div>
+        <h2 class="section-title">Recently Played</h2>
+        <div class="song-list" id="suggested-songs">
+            <div class="loader">Finding your vibe...</div>
+        </div>
     </main>
 
+    <!-- Player Bar -->
     <div class="player-bar" id="player" data-song-id="">
-        <div class="player-track-container">+
+        <div class="player-track-container">
             <span id="current-time">0:00</span>
             <div class="track-line-bg" onclick="seek(event)">
                 <div class="track-line-fill" id="track-fill"></div>
             </div>
             <span id="total-time">0:00</span>
         </div>
-
         <div class="player-main-row">
             <div class="p-info">
-                <div class="p-img" id="p-img"></div>
+                <div class="p-img" id="p-img" style="display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-music" style="color:#555;"></i>
+                </div>
                 <div class="p-text">
-                    <h4 id="p-title">Select Song</h4>
+                    <h4 id="p-title">Select a song</h4>
                     <p id="p-artist">...</p>
                 </div>
             </div>
-            
             <div class="p-ctrls">
                 <i class="fas fa-random ctrl-icon"></i>
-                <i class="fas fa-step-backward ctrl-icon"></i>
+                <i class="fas fa-step-backward ctrl-icon" onclick="playPrev()"></i>
                 <div class="play-btn-main" onclick="togglePlay()">
                     <i class="fas fa-play" id="playIcon"></i>
                 </div>
-                <i class="fas fa-step-forward ctrl-icon"></i>
+                <i class="fas fa-step-forward ctrl-icon" onclick="playNext()"></i>
                 <i class="fas fa-redo ctrl-icon"></i>
             </div>
-
             <div class="p-extra">
-                <i class="far fa-heart ctrl-icon"
-                    id="like-btn"
-                    data-song-id="">
-                </i>
+                <i class="far fa-heart ctrl-icon" id="like-btn"></i>
                 <i class="fas fa-volume-up ctrl-icon"></i>
+                <input type="range" id="vol" min="0" max="100" value="80"
+                    style="width:80px;accent-color:var(--accent);cursor:pointer;"
+                    oninput="setVolume(this.value)">
             </div>
         </div>
     </div>
 
-<script src="{{ url_for('static', filename='js/home.js') }}"></script>
+    <!-- Hidden audio element used by home.js for yt-dlp playback -->
+    <audio id="audio" preload="auto" crossorigin="anonymous"></audio>
 
+    <!-- YouTube IFrame API MUST load before home.js -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="{{ url_for('static', filename='js/home.js') }}"></script>
 </body>
 </html>

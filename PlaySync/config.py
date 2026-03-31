@@ -15,3 +15,4 @@ class Config:
 
     GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
     GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+    YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")

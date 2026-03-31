@@ -38,18 +38,32 @@
                 <i class="fas fa-user"></i>
             </div>
             <div class="profile-info">
-                <div class="profile-label">Free Account</div>
-                <h1 class="profile-name" id="userName">Player One</h1>
+                <div class="profile-label">Spotify Account</div>
+                <h1 class="profile-name" id="userName">{{ user.username }}</h1>
                 <div class="profile-stats">
-                    <div class="stats-item"><span>4</span> Playlists</div>
-                    <div class="stats-item"><span>12</span> Followers</div>
-                    <div class="stats-item"><span>8</span> Following</div>
+                    <div class="stats-item"><span id="stat-following">—</span> Following</div>
+                    <div class="stats-item"><span id="stat-followers">—</span> Followers</div>
                 </div>
                 <div class="profile-actions">
                     <button class="btn-primary" onclick="editProfile()">Edit Profile</button>
-                    <button class="btn-secondary">Share</button>
+                    <button class="btn-secondary" onclick="copyUsername()">Copy Username</button>
                 </div>
             </div>
+        </div>
+
+        <!-- Friend Search Panel -->
+        <div class="panel" style="margin-bottom:24px;">
+            <div style="font-weight:700;font-size:1rem;margin-bottom:14px;">
+                <i class="fas fa-user-plus" style="color:var(--accent);margin-right:8px;"></i>Find &amp; Follow by Username
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <input type="text" id="friendSearchUsername" placeholder="Enter exact username..."
+                    style="flex:1;padding:10px 14px;border-radius:10px;border:1px solid var(--glass-border);background:var(--card-bg);color:var(--text-primary);font-size:0.9rem;outline:none;">
+                <button class="btn-primary" onclick="searchAndFollow()" style="white-space:nowrap;">
+                    <i class="fas fa-search"></i> Find
+                </button>
+            </div>
+            <div id="friendSearchResult" style="margin-top:12px;"></div>
         </div>
 
         <div class="content-grid">
@@ -83,24 +97,16 @@
 
             <div class="right-col">
                 <div class="friends-panel">
-                    <div class="section-header" style="margin-top: 0;">Online Friends</div>
-                    <div class="friend-row">
-                        <div class="friend-icon"><i class="fas fa-user"></i><div class="status-dot"></div></div>
-                        <div class="friend-info"><h4>Friend 1</h4><p>Listening to Pop</p></div>
-                    </div>
-                    <div class="friend-row">
-                        <div class="friend-icon"><i class="fas fa-user"></i><div class="status-dot" style="background:#eab308;"></div></div>
-                        <div class="friend-info"><h4>Friend 2</h4><p>Paused</p></div>
-                    </div>
-                    <div class="friend-row">
-                        <div class="friend-icon"><i class="fas fa-user"></i><div class="status-dot" style="background:#666;"></div></div>
-                        <div class="friend-info"><h4>Friend 3</h4><p>Offline</p></div>
+                    <div class="section-header" style="margin-top: 0;">People You Follow</div>
+                    <div id="following-list">
+                        <div style="color:#aaa;font-size:0.85rem;padding:10px 0;">Loading...</div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
     <script src="{{ url_for('static', filename='js/home.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
 
 </body>
 </html>
