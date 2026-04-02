@@ -51,7 +51,7 @@
                     <h2 class="section-title" style="margin-top: 0;">Create New Jam</h2>
                     
                     <div class="input-group">
-                        <label>Add Friends</label>
+                        <label>Add Members</label>
                         <div class="friend-search-box">
                             <i class="fas fa-user-plus"></i>
                             <input type="text" id="friendSearchInput" placeholder="Search username..." onkeyup="searchFriends()">
@@ -113,6 +113,48 @@
             </div>
         </div>
     </main>
+    
+    <!-- Player Bar (shared across pages) -->
+    <div class="player-bar" id="player" data-song-id="">
+        <div class="player-track-container">
+            <span id="current-time">0:00</span>
+            <div class="track-line-bg" onclick="seek(event)">
+                <div class="track-line-fill" id="track-fill"></div>
+            </div>
+            <span id="total-time">0:00</span>
+        </div>
+        <div class="player-main-row">
+            <div class="p-info">
+                <div class="p-img" id="p-img" style="display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-music" style="color:#555;"></i>
+                </div>
+                <div class="p-text">
+                    <h4 id="p-title">Select a song</h4>
+                    <p id="p-artist">...</p>
+                </div>
+            </div>
+            <div class="p-ctrls">
+                <i class="fas fa-random ctrl-icon"></i>
+                <i class="fas fa-step-backward ctrl-icon" onclick="playPrev()"></i>
+                <div class="play-btn-main" onclick="togglePlay()">
+                    <i class="fas fa-play" id="playIcon"></i>
+                </div>
+                <i class="fas fa-step-forward ctrl-icon" onclick="playNext()"></i>
+                <i class="fas fa-redo ctrl-icon"></i>
+            </div>
+            <div class="p-extra">
+                <i class="far fa-heart ctrl-icon" id="like-btn"></i>
+                <i class="fas fa-volume-up ctrl-icon"></i>
+                <input type="range" id="vol" min="0" max="100" value="80"
+                    style="width:80px;accent-color:var(--accent);cursor:pointer;"
+                    oninput="setVolume(this.value)">
+            </div>
+        </div>
+    </div>
+    <audio id="audio" preload="auto" crossorigin="anonymous"></audio>
+
+    <script src="{{ url_for('static', filename='js/home.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/group.js') }}"></script>
 
     <script src="{{ url_for('static', filename='js/home.js') }}"></script>
     <script src="{{ url_for('static', filename='js/group.js') }}"></script>

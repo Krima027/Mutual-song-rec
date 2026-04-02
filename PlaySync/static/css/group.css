@@ -35,7 +35,7 @@
 .jam-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--glass-border); }
 .member-count { font-size: 0.8rem; color: var(--text-muted); }
 
-.jam-split { flex: 1; display: grid; grid-template-rows: 1fr 1fr; gap: 20px; overflow: hidden; }
+.jam-split { flex: 1; display: grid; grid-template-rows: 2fr 1fr; gap: 20px; overflow: hidden; }
 
 /* Playlist Half */
 .jam-playlist { overflow-y: auto; padding-right: 5px; }
